@@ -1,0 +1,18 @@
+version: 2
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - govet
+    - errcheck
+    - staticcheck
+    - unused
+    - ineffassign
+    - goanalysis_metalinter
+
+issues:
+  exclude-use-default: false
+
+output:
+  format: colored-line-number
