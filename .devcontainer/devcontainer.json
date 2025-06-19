@@ -1,0 +1,24 @@
+// .devcontainer/devcontainer.json
+
+{
+    "name": "Go Development Environment",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "runArgs": [
+        "--init",
+        "--privileged",
+        "-v",
+        "/var/run/docker.sock:/var/run/docker.sock"
+    ],
+    "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+    },
+    "extensions": [
+        "golang.go",
+        "ms-vscode.go"
+    ],
+    "forwardPorts": [],
+    "postCreateCommand": "docker compose watch --no-up & docker compose up -d && docker compose logs --follow",
+    "remoteUser": "root"
+}
