@@ -1,0 +1,17 @@
+db_subnet_group_name = "example-aurora-subnet-group"
+subnet_ids = ["subnet-xxxxxxxx", "subnet-yyyyyyyy"]
+vpc_security_group_ids = ["sg-xxxxxxxx"]
+cluster_identifier = "example-aurora-cluster"
+engine_version = "8.0.mysql_aurora.3.05.1"
+database_name = "myapp"
+master_username = "admin"
+master_password = "your-secure-password-here"
+min_capacity = 0.5
+max_capacity = 16
+instance_count = 2
+skip_final_snapshot = true
+deletion_protection = false
+tags = {
+  Environment = "dev"
+  Project     = "example"
+} 

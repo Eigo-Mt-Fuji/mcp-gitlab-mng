@@ -1,5 +1,6 @@
 # Binaries
 server
+.claude/settings.local.json
 
 # Go build artifacts
 *.exe
