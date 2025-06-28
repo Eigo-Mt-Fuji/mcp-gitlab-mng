@@ -1,24 +1,33 @@
 # mcp-gitlab-mng
 
-
+GitLab Management MCP Server - A Go-based web application for managing GitLab repositories through MCP (Model Context Protocol).
 
 ## Getting started
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+### Docker Usage
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
-
+Build the Docker image:
+```bash
+docker build -t mcp-gitlab-mng .
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/eigo-mt-fuji/mcp-gitlab-mng.git
-git branch -M main
-git push -uf origin main
+
+Run the container with required environment variables:
+```bash
+docker run -i --rm -e GITLAB_TOKEN=your_gitlab_token -e GITLAB_BASE_URL=https://gitlab.example.com mcp-gitlab-mng
 ```
+
+### Local Development
+
+Build and run locally:
+```bash
+go build -o server ./cmd/server
+GITLAB_TOKEN=your_gitlab_token GITLAB_BASE_URL=https://gitlab.example.com ./server
+```
+
+## Environment Variables
+
+- `GITLAB_TOKEN`: Your GitLab personal access token
+- `GITLAB_BASE_URL`: Base URL of your GitLab instance (e.g., https://gitlab.com)
 
 ## Integrate with your tools
 
