@@ -57,7 +57,7 @@ func main() {
 
 func handleListRepository(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	args := req.GetArguments()
-	
+
 	var groupPath string
 	if group, ok := args["group"].(string); ok {
 		groupPath = group

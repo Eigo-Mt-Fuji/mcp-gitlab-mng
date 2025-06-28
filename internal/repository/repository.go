@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"mcp-gitlab-mng/internal/domain"
 
 	"gitlab.com/gitlab-org/api/client-go"
@@ -43,6 +44,31 @@ func (r *GitLabRepository) ListRepositories(groupPath string) ([]*domain.Reposit
 		projects, _, err = r.client.Projects.ListProjects(opts)
 	}
 
+	if err != nil {
+		return nil, err
+	}
+
+	repositories := make([]*domain.Repository, len(projects))
+	for i, project := range projects {
+		repositories[i] = convertProjectToRepository(project)
+	}
+
+	return repositories, nil
+}
+
+func (r *GitLabRepository) ListRepository(ctx context.Context, onlyPrivate bool) ([]*domain.Repository, error) {
+	opts := &gitlab.ListProjectsOptions{
+		ListOptions: gitlab.ListOptions{
+			PerPage: 100,
+		},
+	}
+
+	if onlyPrivate {
+		visibility := gitlab.PrivateVisibility
+		opts.Visibility = &visibility
+	}
+
+	projects, _, err := r.client.Projects.ListProjects(opts, gitlab.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
