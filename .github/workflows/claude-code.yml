@@ -12,7 +12,7 @@ permissions:
   contents: read
   pull-requests: write
   issues: read
-
+  id-token: write
 jobs:
   claude-code-review:
     runs-on: ubuntu-latest
@@ -50,26 +50,18 @@ jobs:
       - name: Build check
         run: go build ./...
 
-      - name: Claude Code Analysis
-        uses: anthropics/claude-code-action@beta
+      - name: Auto review PR
+        uses: anthropics/claude-code-action@main
+        env:
+          OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          task: |
-            Review this Go codebase for:
+          direct_prompt: |
+            Please review this PR. Look at the changes and provide thoughtful feedback on:
             - Code quality and best practices
-            - Security vulnerabilities
-            - Performance optimizations
-            - Adherence to project conventions in CLAUDE.md
-            - Test coverage recommendations
-          include_patterns: |
-            **/*.go
-            go.mod
-            go.sum
-            CLAUDE.md
-            README.md
-          exclude_patterns: |
-            vendor/**
-            **/*_test.go
-          max_files: 50
-          comment_on_pr: true
+            - Potential bugs or issues
+            - Suggestions for improvements
+            - Overall architecture and design decisions
+
+            Be constructive and specific in your feedback. Give inline comments where applicable.
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          allowed_tools: "mcp__github__create_pending_pull_request_review,mcp__github__add_pull_request_review_comment_to_pending_review,mcp__github__submit_pending_pull_request_review,mcp__github__get_pull_request_diff"

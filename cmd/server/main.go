@@ -8,12 +8,13 @@ import (
 	"os"
 
 	"mcp-gitlab-mng/internal/repository"
+	"mcp-gitlab-mng/internal/usecase"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
-var gitlabRepo *repository.GitLabRepository
+var gitlabService *usecase.GitLabService
 
 func main() {
 	// Initialize GitLab repository
@@ -27,11 +28,12 @@ func main() {
 		baseURL = "https://gitlab.com"
 	}
 
-	var err error
-	gitlabRepo, err = repository.NewGitLabRepository(token, baseURL)
+	gitlabRepo, err := repository.NewGitLabRepository(token, baseURL)
 	if err != nil {
 		log.Fatalf("Failed to initialize GitLab client: %v", err)
 	}
+
+	gitlabService = usecase.NewGitLabService(gitlabRepo)
 
 	mcpServer := server.NewMCPServer(
 		"mcp-gitlab-mng",
@@ -63,7 +65,7 @@ func handleListRepository(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		groupPath = group
 	}
 
-	repositories, err := gitlabRepo.ListRepositories(groupPath)
+	repositories, err := gitlabService.ListRepositories(groupPath)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to list repositories: %v", err)), nil
 	}
