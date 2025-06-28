@@ -55,21 +55,10 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          task: |
+          custom_instructions: |
             Review this Go codebase for:
             - Code quality and best practices
             - Security vulnerabilities
             - Performance optimizations
             - Adherence to project conventions in CLAUDE.md
             - Test coverage recommendations
-          include_patterns: |
-            **/*.go
-            go.mod
-            go.sum
-            CLAUDE.md
-            README.md
-          exclude_patterns: |
-            vendor/**
-            **/*_test.go
-          max_files: 50
-          comment_on_pr: true
