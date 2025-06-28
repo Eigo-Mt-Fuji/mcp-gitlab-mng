@@ -46,11 +46,14 @@ jobs:
             exit 1
           fi
 
+      - name: Build check
+        run: go build ./...
+
       - name: Claude Code Analysis
-        uses: anthropics/claude-code-action@v1
+        uses: anthropics/claude-code-action@beta
         with:
-          anthropic-api-key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           task: |
             Review this Go codebase for:
             - Code quality and best practices
@@ -58,14 +61,14 @@ jobs:
             - Performance optimizations
             - Adherence to project conventions in CLAUDE.md
             - Test coverage recommendations
-          include-patterns: |
+          include_patterns: |
             **/*.go
             go.mod
             go.sum
             CLAUDE.md
             README.md
-          exclude-patterns: |
+          exclude_patterns: |
             vendor/**
             **/*_test.go
-          max-files: 50
-          comment-on-pr: true
+          max_files: 50
+          comment_on_pr: true
