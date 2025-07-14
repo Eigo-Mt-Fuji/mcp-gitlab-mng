@@ -51,6 +51,16 @@ func main() {
 
 	mcpServer.AddTool(listRepoTool, handleListRepository)
 
+	// Register list_terraform_versions tool
+	listTerraformVersionsTool := mcp.NewTool("list_terraform_versions",
+		mcp.WithDescription("List Terraform versions across GitLab repositories"),
+		mcp.WithString("group",
+			mcp.Description("GitLab group name (optional)"),
+		),
+	)
+
+	mcpServer.AddTool(listTerraformVersionsTool, handleListTerraformVersions)
+
 	// Start stdio transport
 	if err := server.ServeStdio(mcpServer); err != nil {
 		log.Fatal(err)
@@ -65,7 +75,7 @@ func handleListRepository(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 		groupPath = group
 	}
 
-	repositories, err := gitlabService.ListRepositories(groupPath)
+	repositories, err := gitlabService.ListRepositories(ctx, groupPath, true)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to list repositories: %v", err)), nil
 	}
@@ -77,4 +87,33 @@ func handleListRepository(ctx context.Context, req mcp.CallToolRequest) (*mcp.Ca
 	}
 
 	return mcp.NewToolResultText(string(repoJSON)), nil
+}
+
+func handleListTerraformVersions(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := req.GetArguments()
+
+	var groupPath string
+	if group, ok := args["group"].(string); ok {
+		groupPath = group
+	}
+
+	// First get repositories
+	repositories, err := gitlabService.ListRepositories(ctx, groupPath, true)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to list repositories: %v", err)), nil
+	}
+
+	// Then get Terraform versions for those repositories
+	terraformVersions, err := gitlabService.ListTerraformVersions(ctx, repositories)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to list Terraform versions: %v", err)), nil
+	}
+
+	// Convert to JSON for better formatting
+	terraformJSON, err := json.MarshalIndent(terraformVersions, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format Terraform versions: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(terraformJSON)), nil
 }

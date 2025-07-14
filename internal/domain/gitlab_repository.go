@@ -21,8 +21,19 @@ type Repository struct {
 	LastActivityAt    time.Time `json:"last_activity_at"`
 }
 
+type TerraformComponent struct {
+	Path            string `json:"path"`
+	RequiredVersion string `json:"required_version"`
+	FilePath        string `json:"file_path"`
+}
+
+type RepositoryTerraformVersions struct {
+	Repository *Repository           `json:"repository"`
+	Components []*TerraformComponent `json:"components"`
+}
+
 type RepositoryService interface {
-	ListRepository(ctx context.Context, onlyPrivate bool) ([]*Repository, error)
-	ListRepositories(groupPath string) ([]*Repository, error)
+	ListRepositories(ctx context.Context, groupPath string, onlyPrivate bool) ([]*Repository, error)
 	GetRepository(projectID int) (*Repository, error)
+	ListTerraformVersions(ctx context.Context, repositories []*Repository) ([]*RepositoryTerraformVersions, error)
 }

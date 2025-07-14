@@ -3,6 +3,8 @@ package repository
 import (
 	"context"
 	"mcp-gitlab-mng/internal/domain"
+	"regexp"
+	"strings"
 
 	"gitlab.com/gitlab-org/api/client-go"
 )
@@ -22,9 +24,14 @@ func NewGitLabRepository(token, baseURL string) (*GitLabRepository, error) {
 	}, nil
 }
 
-func (r *GitLabRepository) ListRepositories(groupPath string) ([]*domain.Repository, error) {
+func (r *GitLabRepository) ListRepositories(ctx context.Context, groupPath string, onlyPrivate bool) ([]*domain.Repository, error) {
 	var projects []*gitlab.Project
 	var err error
+	var visibility gitlab.VisibilityValue
+
+	if onlyPrivate {
+		visibility = gitlab.PrivateVisibility
+	}
 
 	if groupPath != "" {
 		// List projects for specific group
@@ -32,6 +39,7 @@ func (r *GitLabRepository) ListRepositories(groupPath string) ([]*domain.Reposit
 			ListOptions: gitlab.ListOptions{
 				PerPage: 100,
 			},
+			Visibility: &visibility,
 		}
 		projects, _, err = r.client.Groups.ListGroupProjects(groupPath, opts)
 	} else {
@@ -40,35 +48,11 @@ func (r *GitLabRepository) ListRepositories(groupPath string) ([]*domain.Reposit
 			ListOptions: gitlab.ListOptions{
 				PerPage: 100,
 			},
+			Visibility: &visibility,
 		}
 		projects, _, err = r.client.Projects.ListProjects(opts)
 	}
 
-	if err != nil {
-		return nil, err
-	}
-
-	repositories := make([]*domain.Repository, len(projects))
-	for i, project := range projects {
-		repositories[i] = convertProjectToRepository(project)
-	}
-
-	return repositories, nil
-}
-
-func (r *GitLabRepository) ListRepository(ctx context.Context, onlyPrivate bool) ([]*domain.Repository, error) {
-	opts := &gitlab.ListProjectsOptions{
-		ListOptions: gitlab.ListOptions{
-			PerPage: 100,
-		},
-	}
-
-	if onlyPrivate {
-		visibility := gitlab.PrivateVisibility
-		opts.Visibility = &visibility
-	}
-
-	projects, _, err := r.client.Projects.ListProjects(opts, gitlab.WithContext(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -113,4 +97,76 @@ func convertProjectToRepository(project *gitlab.Project) *domain.Repository {
 	}
 
 	return repo
+}
+
+func (r *GitLabRepository) ListTerraformVersions(ctx context.Context, repositories []*domain.Repository) ([]*domain.RepositoryTerraformVersions, error) {
+	var result []*domain.RepositoryTerraformVersions
+
+	for _, repo := range repositories {
+		components, err := r.searchTerraformVersionsInRepository(ctx, repo.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(components) > 0 {
+			result = append(result, &domain.RepositoryTerraformVersions{
+				Repository: repo,
+				Components: components,
+			})
+		}
+	}
+
+	return result, nil
+}
+
+func (r *GitLabRepository) searchTerraformVersionsInRepository(ctx context.Context, projectID int) ([]*domain.TerraformComponent, error) {
+	opts := &gitlab.SearchOptions{
+		ListOptions: gitlab.ListOptions{
+			PerPage: 100,
+		},
+	}
+
+	searchResults, _, err := r.client.Search.BlobsByProject(projectID, "required_version", opts)
+	if err != nil {
+		return nil, err
+	}
+
+	var components []*domain.TerraformComponent
+	requiredVersionRegex := regexp.MustCompile(`required_version\s*=\s*"([^"]+)"`)
+
+	for _, result := range searchResults {
+		if result.Data != "" {
+			content := result.Data
+			matches := requiredVersionRegex.FindAllStringSubmatch(content, -1)
+
+			for _, match := range matches {
+				if len(match) > 1 {
+					// Extract directory path from file path
+					filePath := result.Path
+
+					dirPath := strings.TrimSuffix(filePath, "/"+getFileName(filePath))
+					if dirPath == "" {
+						dirPath = "/"
+					}
+
+					component := &domain.TerraformComponent{
+						Path:            dirPath,
+						RequiredVersion: match[1],
+						FilePath:        filePath,
+					}
+					components = append(components, component)
+				}
+			}
+		}
+	}
+
+	return components, nil
+}
+
+func getFileName(filePath string) string {
+	parts := strings.Split(filePath, "/")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return filePath
 }
