@@ -170,3 +170,88 @@ func getFileName(filePath string) string {
 	}
 	return filePath
 }
+
+func (r *GitLabRepository) ListCodeByKeyword(ctx context.Context, repositories []*domain.Repository, keyword string, regexPatterns map[string]string) ([]*domain.RepositoryCodeSearch, error) {
+	var result []*domain.RepositoryCodeSearch
+
+	for _, repo := range repositories {
+		codeMatches, err := r.searchCodeByKeywordInRepository(ctx, repo.ID, keyword, regexPatterns)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(codeMatches) > 0 {
+			result = append(result, &domain.RepositoryCodeSearch{
+				Repository: repo,
+				Results:    codeMatches,
+			})
+		}
+	}
+
+	return result, nil
+}
+
+func (r *GitLabRepository) searchCodeByKeywordInRepository(ctx context.Context, projectID int, keyword string, regexPatterns map[string]string) ([]*domain.CodeMatch, error) {
+	opts := &gitlab.SearchOptions{
+		ListOptions: gitlab.ListOptions{
+			PerPage: 100,
+		},
+	}
+
+	searchResults, _, err := r.client.Search.BlobsByProject(projectID, keyword, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	var codeMatches []*domain.CodeMatch
+	compiledRegexes := make(map[string]*regexp.Regexp)
+
+	// Compile all regex patterns once
+	for name, pattern := range regexPatterns {
+		compiledRegex, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, err
+		}
+		compiledRegexes[name] = compiledRegex
+	}
+
+	for _, result := range searchResults {
+		if result.Data != "" {
+			content := result.Data
+			matches := make(map[string]string)
+
+			// Apply all regex patterns to the content
+			for name, compiledRegex := range compiledRegexes {
+				regexMatches := compiledRegex.FindAllStringSubmatch(content, -1)
+				for _, match := range regexMatches {
+					if len(match) > 1 {
+						// Use the first capturing group, or full match if no groups
+						if len(match) > 1 {
+							matches[name] = match[1]
+						} else {
+							matches[name] = match[0]
+						}
+					}
+				}
+			}
+
+			// Only create CodeMatch if we found matches
+			if len(matches) > 0 {
+				filePath := result.Path
+				dirPath := strings.TrimSuffix(filePath, "/"+getFileName(filePath))
+				if dirPath == "" {
+					dirPath = "/"
+				}
+
+				codeMatch := &domain.CodeMatch{
+					Path:     dirPath,
+					FilePath: filePath,
+					Matches:  matches,
+				}
+				codeMatches = append(codeMatches, codeMatch)
+			}
+		}
+	}
+
+	return codeMatches, nil
+}
