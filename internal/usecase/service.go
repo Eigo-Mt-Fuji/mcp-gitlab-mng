@@ -26,3 +26,7 @@ func (s *GitLabService) GetRepository(projectID int) (*domain.Repository, error)
 func (s *GitLabService) ListTerraformVersions(ctx context.Context, repositories []*domain.Repository) ([]*domain.RepositoryTerraformVersions, error) {
 	return s.repo.ListTerraformVersions(ctx, repositories)
 }
+
+func (s *GitLabService) ListCodeByKeyword(ctx context.Context, repositories []*domain.Repository, keyword string, regexPatterns map[string]string) ([]*domain.RepositoryCodeSearch, error) {
+	return s.repo.ListCodeByKeyword(ctx, repositories, keyword, regexPatterns)
+}
