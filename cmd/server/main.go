@@ -61,6 +61,22 @@ func main() {
 
 	mcpServer.AddTool(listTerraformVersionsTool, handleListTerraformVersions)
 
+	// Register list_code_by_keyword tool
+	listCodeByKeywordTool := mcp.NewTool("list_code_by_keyword",
+		mcp.WithDescription("Search for code by keyword across GitLab repositories"),
+		mcp.WithString("group",
+			mcp.Description("GitLab group name (optional)"),
+		),
+		mcp.WithString("keyword",
+			mcp.Description("Keyword to search for in code"),
+		),
+		mcp.WithObject("regex_patterns",
+			mcp.Description("Optional regex patterns to extract specific data from matched files"),
+		),
+	)
+
+	mcpServer.AddTool(listCodeByKeywordTool, handleListCodeByKeyword)
+
 	// Start stdio transport
 	if err := server.ServeStdio(mcpServer); err != nil {
 		log.Fatal(err)
@@ -116,4 +132,48 @@ func handleListTerraformVersions(ctx context.Context, req mcp.CallToolRequest) (
 	}
 
 	return mcp.NewToolResultText(string(terraformJSON)), nil
+}
+
+func handleListCodeByKeyword(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	args := req.GetArguments()
+
+	var groupPath string
+	if group, ok := args["group"].(string); ok {
+		groupPath = group
+	}
+
+	keyword, ok := args["keyword"].(string)
+	if !ok || keyword == "" {
+		return mcp.NewToolResultError("keyword parameter is required"), nil
+	}
+
+	// Parse regex patterns if provided
+	regexPatterns := make(map[string]string)
+	if patterns, ok := args["regex_patterns"].(map[string]interface{}); ok {
+		for name, pattern := range patterns {
+			if patternStr, ok := pattern.(string); ok {
+				regexPatterns[name] = patternStr
+			}
+		}
+	}
+
+	// First get repositories
+	repositories, err := gitlabService.ListRepositories(ctx, groupPath, true)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to list repositories: %v", err)), nil
+	}
+
+	// Then search for code by keyword
+	codeSearchResults, err := gitlabService.ListCodeByKeyword(ctx, repositories, keyword, regexPatterns)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to search code by keyword: %v", err)), nil
+	}
+
+	// Convert to JSON for better formatting
+	codeSearchJSON, err := json.MarshalIndent(codeSearchResults, "", "  ")
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to format code search results: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(string(codeSearchJSON)), nil
 }

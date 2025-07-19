@@ -225,12 +225,11 @@ func (r *GitLabRepository) searchCodeByKeywordInRepository(ctx context.Context, 
 				regexMatches := compiledRegex.FindAllStringSubmatch(content, -1)
 				for _, match := range regexMatches {
 					if len(match) > 1 {
-						// Use the first capturing group, or full match if no groups
-						if len(match) > 1 {
-							matches[name] = match[1]
-						} else {
-							matches[name] = match[0]
-						}
+						// Use the first capturing group
+						matches[name] = match[1]
+					} else if len(match) > 0 {
+						// Use full match if no capturing groups
+						matches[name] = match[0]
 					}
 				}
 			}
